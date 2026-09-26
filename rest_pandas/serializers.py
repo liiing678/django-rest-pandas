@@ -6,6 +6,7 @@ from django.utils.functional import cached_property
 import datetime
 from collections import OrderedDict
 from . import settings
+from .frame import FrameSpec, load_dataframe, parse_request_options
 
 
 def get_label(field, name):
@@ -38,24 +39,20 @@ class PandasSerializer(serializers.ListSerializer):
         }
 
     def get_dataframe(self, data):
-        dataframe = DataFrame(data)
-        if self.apply_field_labels:
-            dataframe.rename(columns=self.field_labels, inplace=True)
-        index = self.get_index(dataframe)
-        if index:
-            if self.index_none_value is not None:
-                for key in index:
-                    try:
-                        dataframe[key].fillna(
-                            self.index_none_value, inplace=True
-                        )
-                    except ValueError:
-                        pass
-            dataframe.set_index(index, inplace=True)
-        else:
-            # Name auto-index column to ensure valid CSV output
-            dataframe.index.name = "row"
-        return dataframe
+        spec = self.get_frame_spec(self.get_index(DataFrame(data)))
+        return load_dataframe(data, spec)
+
+    def get_frame_spec(self, index_fields):
+        """
+        Translate serializer Meta options into the intermediate
+        FrameSpec used by the data-loading layer.
+        """
+        return FrameSpec(
+            index_fields=tuple(index_fields),
+            field_labels=dict(self.field_labels),
+            apply_field_labels=self.apply_field_labels,
+            index_none_value=self.index_none_value,
+        )
 
     def transform_dataframe(self, dataframe):
         view = self.context.get("view", None)
@@ -329,12 +326,10 @@ class PandasBoxplotSerializer(PandasSerializer):
         return dataframe
 
     def get_grouping(self, dataframe):
-        request = self.context.get("request", None)
         datasets = len(dataframe.columns)
-        if request:
-            group = request.GET.get("group", None)
-            if group:
-                return group
+        options = parse_request_options(self.context.get("request", None))
+        if options.group:
+            return options.group
         return default_grouping(datasets, self.get_date_field())
 
     def boxplots_for_interval(self, series, interval):

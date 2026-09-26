@@ -4,6 +4,7 @@ from tempfile import mkstemp
 from pandas import DataFrame
 from io import StringIO, BytesIO
 import os
+from .frame import parse_request_options
 
 
 RESPONSE_ERROR = (
@@ -169,13 +170,13 @@ class PandasJSONRenderer(PandasBaseRenderer):
     default_date_format = "iso"
 
     def get_pandas_kwargs(self, data, renderer_context):
-        request = renderer_context["request"]
+        options = parse_request_options(renderer_context.get("request"))
 
-        orient = request.GET.get("orient", "")
+        orient = options.orient or ""
         if orient not in self.orient_choices:
             orient = self.default_orient
 
-        date_format = request.GET.get("date_format", "")
+        date_format = options.date_format or ""
         if date_format not in self.date_format_choices:
             date_format = self.default_date_format
 

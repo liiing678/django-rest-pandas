@@ -4,6 +4,12 @@ from .views import (
     PandasView,
     PandasViewSet,
 )
+from .frame import (
+    FrameSpec,
+    RequestOptions,
+    load_dataframe,
+    parse_request_options,
+)
 from .serializers import (
     PandasSerializer,
     PandasUnstackedSerializer,
@@ -30,6 +36,10 @@ __all__ = [
     "PandasSimpleView",
     "PandasView",
     "PandasViewSet",
+    "FrameSpec",
+    "RequestOptions",
+    "load_dataframe",
+    "parse_request_options",
     "PandasSerializer",
     "PandasUnstackedSerializer",
     "PandasScatterSerializer",
