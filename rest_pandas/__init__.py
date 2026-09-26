@@ -11,6 +11,11 @@ from .serializers import (
     PandasBoxplotSerializer,
     SimpleSerializer,
 )
+from .pipeline import (
+    parse_input,
+    load_dataframe,
+    render_dataframe,
+)
 from .renderers import (
     PandasBaseRenderer,
     PandasFileRenderer,
@@ -35,6 +40,9 @@ __all__ = [
     "PandasScatterSerializer",
     "PandasBoxplotSerializer",
     "SimpleSerializer",
+    "parse_input",
+    "load_dataframe",
+    "render_dataframe",
     "PandasBaseRenderer",
     "PandasFileRenderer",
     "PandasCSVRenderer",

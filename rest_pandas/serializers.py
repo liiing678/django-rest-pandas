@@ -6,6 +6,7 @@ from django.utils.functional import cached_property
 import datetime
 from collections import OrderedDict
 from . import settings
+from .pipeline import parse_input, load_dataframe, render_dataframe
 
 
 def get_label(field, name):
@@ -38,30 +39,21 @@ class PandasSerializer(serializers.ListSerializer):
         }
 
     def get_dataframe(self, data):
-        dataframe = DataFrame(data)
-        if self.apply_field_labels:
-            dataframe.rename(columns=self.field_labels, inplace=True)
-        index = self.get_index(dataframe)
-        if index:
-            if self.index_none_value is not None:
-                for key in index:
-                    try:
-                        dataframe[key].fillna(
-                            self.index_none_value, inplace=True
-                        )
-                    except ValueError:
-                        pass
-            dataframe.set_index(index, inplace=True)
-        else:
-            # Name auto-index column to ensure valid CSV output
-            dataframe.index.name = "row"
-        return dataframe
+        # 数据装载层：serializer 状态适配到 pipeline.load_dataframe
+        return load_dataframe(
+            data,
+            field_labels=(
+                self.field_labels if self.apply_field_labels else None
+            ),
+            index=self.get_index,
+            index_none_value=self.index_none_value,
+        )
 
     def transform_dataframe(self, dataframe):
-        view = self.context.get("view", None)
-        if view and hasattr(view, "transform_dataframe"):
-            return self.context["view"].transform_dataframe(dataframe)
-        return dataframe
+        # 输出渲染层：委托 pipeline.render_dataframe 应用视图钩子
+        return render_dataframe(
+            dataframe, self.context.get("view", None)
+        )
 
     @property
     def data(self):
@@ -73,9 +65,8 @@ class PandasSerializer(serializers.ListSerializer):
             return DataFrame([])
 
     def to_representation(self, data):
-        if isinstance(data, DataFrame):
-            return data
-        return super().to_representation(data)
+        # 入口解析层：委托 pipeline.parse_input 归一化输入
+        return parse_input(data, self.child.to_representation)
 
     @property
     def model_serializer(self):
